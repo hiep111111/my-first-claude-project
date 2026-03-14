@@ -135,13 +135,13 @@ export function PreviewFrame() {
     return (
       <div className="h-full flex items-center justify-center p-8 bg-gray-50">
         <div className="text-center max-w-md">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-            <AlertCircle className="h-8 w-8 text-gray-400" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
+            <AlertCircle className="h-8 w-8 text-red-700" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <h3 className="text-lg font-semibold text-red-800 mb-2">
             No Preview Available
           </h3>
-          <p className="text-sm text-gray-500">{error}</p>
+          <p className="text-sm text-red-600">{error}</p>
           <p className="text-xs text-gray-400 mt-2">
             Start by creating a React component using the AI assistant
           </p>

@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AlertTriangle } from "lucide-react";
 
 interface SignInFormProps {
   onSuccess?: () => void;
@@ -58,8 +59,9 @@ export function SignInForm({ onSuccess }: SignInFormProps) {
       </div>
 
       {error && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded p-2">
-          {error}
+        <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-300 rounded p-3">
+          <AlertTriangle className="h-4 w-4 text-red-700 mt-0.5 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
