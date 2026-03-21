@@ -1,79 +1,74 @@
 # REQUIREMENTS.md — UIGen
 
-> Tài liệu yêu cầu sản phẩm, dựa trên codebase hiện tại (2026-03-21)
-
----
-
 ## 1. Đối tượng sử dụng
 
-| Nhóm | Mô tả | Mục đích sử dụng |
-|---|---|---|
-| **Anonymous user** | Bất kỳ ai truy cập, không cần tài khoản | Thử tạo UI component nhanh, không lưu lại |
-| **Authenticated user** | Người đã đăng ký tài khoản | Tạo và lưu nhiều project, quay lại làm tiếp |
+- **Developer / Frontend engineer**: Muốn prototype nhanh React component mà không cần setup môi trường
+- **Người dùng ẩn danh (Anonymous)**: Dùng thử không cần đăng ký; work được migrate tự động sang tài khoản khi đăng nhập, không mất dữ liệu
+- **Người dùng đã đăng ký (Authenticated)**: Muốn lưu lại project, quay lại chỉnh sửa sau
 
 ---
 
 ## 2. Danh sách màn hình
 
-| Màn hình | Đường dẫn | Mô tả |
-|---|---|---|
-| **Trang chủ** | `/` | Entry point — ẩn danh thấy app ngay; đã login thì redirect tới project gần nhất hoặc tạo project mới |
-| **Project workspace** | `/[projectId]` | Giao diện làm việc chính với 3 panel: Chat, Preview, Code editor |
-| **Auth dialog** | (popup) | Form đăng nhập / đăng ký hiển thị dạng dialog, không phải trang riêng |
+| Màn hình | Mô tả |
+|---|---|
+| **Home (`/`)** | Landing page; đã đăng nhập + có project → redirect sang project gần nhất; đã đăng nhập + chưa có project → hiển thị màn hình tạo project mới |
+| **Project (`/[projectId]`)** | Giao diện chính làm việc với một project cụ thể |
+| **Main Layout (3 panel)** | Shell chứa Chat, Preview, Code Editor trong cùng một view |
+| **Chat Panel** | Giao diện chat để mô tả component cần tạo |
+| **Preview Panel** | Iframe sandbox hiển thị component đã render |
+| **Code Panel** | File tree + code editor để xem/sửa code được sinh ra; preview KHÔNG live update khi sửa tay — cần bấm nút Run/Apply để re-render |
+| **Auth Dialog** | Popup đăng ký / đăng nhập bằng username + password; login thất bại hiển thị toast notification; có giới hạn số lần thử, vượt giới hạn thì thông báo cho user |
 
 ---
 
 ## 3. Luồng chính
 
-### Luồng ẩn danh (không đăng nhập)
-
-1. User truy cập `/`
-2. Thấy giao diện 3 panel ngay lập tức (không cần login)
-3. Nhập mô tả UI vào ô chat (panel trái)
-4. Gửi message → `POST /api/chat` gọi Claude AI
-5. Claude trả về tool calls → tạo/sửa file trong Virtual Filesystem
-6. Panel phải tự refresh: Babel transpile JSX → render vào iframe sandbox
-7. User xem preview trực tiếp, tiếp tục chat để chỉnh sửa
-8. (Tuỳ chọn) Toggle sang tab Code để xem/đọc file được tạo
-
-### Luồng đã đăng nhập
-
-1. User truy cập `/` → tự động redirect tới project gần nhất (hoặc tạo project mới)
-2. Tiếp tục luồng như trên (bước 3–8)
-3. Mỗi thay đổi được lưu vào SQLite (messages + virtual FS snapshot)
-4. User có thể quay lại project cũ bất kỳ lúc nào
+1. User truy cập app tại `/`
+2. Nếu chưa đăng nhập → thấy giao diện 3 panel với project trống
+3. Nếu đã đăng nhập → tự động redirect sang project gần nhất (hoặc tạo project mới)
+4. User gõ mô tả component vào ô chat (ví dụ: "tạo một button màu xanh với hiệu ứng hover")
+5. App gửi request `POST /api/chat` kèm lịch sử chat + trạng thái virtual filesystem
+6. Claude xử lý và trả về tool calls để tạo/sửa file trong virtual filesystem
+7. Virtual filesystem cập nhật in-memory, Preview Panel tự động re-render
+8. User thấy component live trong iframe ngay lập tức
+9. User có thể:
+   - Tiếp tục chat để chỉnh sửa component
+   - Chuyển sang tab **Code** để xem/sửa code thủ công
+   - Đăng nhập để lưu project lại
+10. (Nếu đã đăng nhập) Project tự động được lưu vào SQLite sau mỗi lần chat; thay đổi code thủ công trong Code Editor KHÔNG được persist — chỉ thay đổi qua AI chat mới được lưu
 
 ---
 
 ## 4. Feature List
 
-### Must Have (đã có trong code)
+### Must Have (đang có, core functionality)
 
-- **Chat interface** — Gửi/nhận message với AI, hiển thị markdown
-- **AI code generation** — Claude tạo React component từ mô tả tự nhiên
-- **Virtual filesystem** — Quản lý file in-memory, không cần disk
-- **Live preview** — Babel transpile JSX + render trong iframe sandbox
-- **Code editor + file tree** — Xem và duyệt code được tạo
-- **Resizable panels** — Kéo thả chia tỉ lệ giữa chat và preview
-- **Toggle chat panel** — Ẩn/hiện panel chat để có thêm không gian xem
-- **Toggle Preview/Code** — Chuyển đổi giữa xem preview và đọc code
-- **Anonymous usage** — Dùng ngay không cần đăng ký
-- **Authentication** — Đăng ký / đăng nhập bằng email + password (JWT cookie)
-- **Project persistence** — Lưu project vào SQLite cho user đã login
-- **Mock AI fallback** — Chạy được khi không có API key (MockLanguageModel)
-- **File operations** — AI có thể tạo, sửa, đổi tên, xoá file trong virtual FS
+- Chat với AI để sinh React component
+- Live preview component trong sandboxed iframe
+- Virtual filesystem in-memory (tạo, sửa, xóa file)
+- Babel transpile JSX tại runtime, import map trỏ về esm.sh
+- AI dùng tools `str_replace_editor` và `file_manager` để thao tác file
+- Giao diện 3 panel có thể collapse chat panel
+- Chuyển đổi giữa tab Preview và Code
+- Code editor với syntax highlighting + file tree
+- Đăng ký / đăng nhập bằng username + password (JWT cookie)
+- Lưu project vào SQLite (messages + filesystem snapshot)
+- Hỗ trợ anonymous user (không cần đăng nhập)
+- Fallback MockLanguageModel khi không có API key
 
-### Nice to Have (chưa có, nhưng phù hợp với sản phẩm)
+### Nice To Have (đang có nhưng không phải core)
 
-- Danh sách tất cả project của user (project list page)
-- Đặt tên / đổi tên project
-- Export code ra file zip để tải về
-- Share project qua link public
+- Resizable panels (kéo thay đổi kích thước các panel)
+- Theo dõi anonymous work qua localStorage (`anon-work-tracker`)
+- Nhiều file trong một project (multi-file support với `@/` import)
+- Đặt tên project
 
-### Không làm (ngoài scope hiện tại)
+### Không làm (explicitly out of scope)
 
-- Chạy/build project thật trên server
-- Hỗ trợ framework khác ngoài React + Tailwind
-- Collaboration nhiều người cùng lúc
-- Version history / undo theo commit
-- Tích hợp với GitHub / external git
+- Disk I/O thực sự — filesystem hoàn toàn in-memory
+- Export file ra máy tính người dùng (không có feature này trong code)
+- Collaboration nhiều người dùng cùng lúc
+- Deploy component lên hosting
+- Hỗ trợ framework khác ngoài React (Vue, Svelte, v.v.)
+- Version history / rollback
